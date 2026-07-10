@@ -4,6 +4,12 @@
 
 > Aren't you tired of paying for software just to get a complementary tool that's somehow missing a lot of features? My Own Control Center is a full Windows PC toolkit: diagnostics, disk & memory tools, a command center, and an AI assistant, fully rebrandable, with a lightweight Basic mode built in.
 
+## ☕ Support the project
+
+If this project has been useful to you, you can support its development:
+
+[☕ Buy me a coffee](https://paypal.me/Stralloz)
+
 ## What this is
 
 A single-file desktop app for Windows that combines the things you'd normally need several separate tools for: a live system dashboard, safe cleanup/optimization, network diagnostics, disk and memory tools, a command reference with guided execution, and a multi-provider AI assistant that can answer questions about the machine it's running on.
