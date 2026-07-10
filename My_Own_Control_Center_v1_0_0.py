@@ -5,6 +5,19 @@ My Own Control Center
 (basado en Stralloz Control Center)
 v1.0.0 edition
 
+Cambios v1.0.1 (bugfix):
+- _update_setting() ya no deja que un fallo al guardar config.json en disco
+  aborte en silencio el resto del callback que la llamo. Esto era lo que
+  podia hacer que el toggle Basica/Completa (y en teoria cualquier otro
+  ajuste) pareciera "no hacer nada": si ConfigManager.save_config() lanzaba
+  una excepcion, Tkinter la traga por defecto sin avisar, y el codigo que
+  reconstruye el sidebar (_rebuild_shell_keep_page) nunca llegaba a correr
+  porque estaba despues del guardado en la misma funcion. Ahora un fallo de
+  guardado muestra un aviso en vez de quedar en silencio, y ya no bloquea el
+  refresco de la interfaz.
+- _change_view_mode_display() ahora tambien atrapa y muestra cualquier error
+  al reconstruir la interfaz, en vez de dejarlo pasar sin rastro.
+
 Cambios v1.0.0:
 - Nombre de marca desacoplado del codigo: por defecto "My Own Control Center",
   editable en Configuracion en cualquier momento (config["app_name"]) y
@@ -225,7 +238,7 @@ else:
 # =============================================================================
 # ESTILO
 # =============================================================================
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 COLORS = {
     "bg": "#0b1220",
@@ -4831,7 +4844,15 @@ table{width:100%;border-collapse:collapse;margin-top:10px}td,th{border-bottom:1p
         basic = getattr(self, "_view_mode_display_to_value", {}).get(display_value, False)
         self._update_setting("basic_mode", basic)
         self.update_status(f"Vista: {display_value}")
-        self._rebuild_shell_keep_page()
+        try:
+            self._rebuild_shell_keep_page()
+        except Exception as exc:
+            # Si esto falla no queremos que quede en silencio: es justamente
+            # el paso que reconstruye el sidebar/dashboard con la nueva vista.
+            messagebox.showerror(
+                "Error al cambiar de vista",
+                f"El ajuste se guardó, pero no se pudo refrescar la interfaz:\n{exc}",
+            )
 
     def _browse_data_path(self) -> None:
         path = filedialog.askdirectory(initialdir=self.settings_path_var.get() or str(Path.home()))
@@ -4892,7 +4913,22 @@ table{width:100%;border-collapse:collapse;margin-top:10px}td,th{border-bottom:1p
 
     def _update_setting(self, key: str, value: Any) -> None:
         self.config_data[key] = value
-        ConfigManager.save_config(self.config_data)
+        try:
+            ConfigManager.save_config(self.config_data)
+        except Exception as exc:
+            # Importante: si guardar en disco falla (permisos, disco lleno,
+            # archivo bloqueado por otro proceso, etc.), el valor ya quedo
+            # aplicado en memoria -- no dejamos que la excepcion se propague,
+            # porque varios llamadores (p. ej. _change_view_mode_display)
+            # hacen trabajo de UI justo despues de _update_setting(), y
+            # Tkinter por defecto se traga excepciones de callbacks en
+            # silencio (las imprime en consola y sigue, no las muestra ni
+            # crashea), lo que antes podia dar la sensacion de "no paso
+            # nada" al cambiar un ajuste.
+            messagebox.showwarning(
+                "No se pudo guardar la configuración",
+                f"El ajuste se aplicó en esta sesión, pero no se pudo guardar en disco:\n{exc}",
+            )
 
     def _open_data_folder(self) -> None:
         path = Path(self.config_data.get("install_path", str(Path.home() / "StrallozData")))
